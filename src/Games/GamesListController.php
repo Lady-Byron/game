@@ -1,159 +1,122 @@
 <?php
 
-namespace LadyByron\Games\Games;
+namespace LadyByron\Games\Controllers;
 
 use Flarum\Foundation\Paths;
 use Flarum\Http\RequestUtil;
 use Flarum\Http\UrlGenerator;
-use Illuminate\Support\Arr;
 use Laminas\Diactoros\Response\JsonResponse;
+use Laminas\Diactoros\Response\RedirectResponse;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface;
-use LadyByron\Games\Engine\EngineChain;
-use LadyByron\Games\Engine\TwineEngine;
-use LadyByron\Games\Engine\InkEngine;
 
-final class GamesListController implements RequestHandlerInterface
+final class GameListController implements RequestHandlerInterface
 {
     public function __construct(
-        protected UrlGenerator $url,
-        protected Paths $paths
+        protected Paths $paths,
+        protected UrlGenerator $url
     ) {}
 
     public function handle(Request $request): Response
     {
         $actor = RequestUtil::getActor($request);
 
-        // 你可以在这里选择是否要求登录。
-        // 如果希望游戏库也要登录，保留这段；否则去掉。
+        // 和其他 API 一致：未登录重定向论坛首页
         if ($actor->isGuest()) {
-            return new JsonResponse(['error' => 'unauthorized'], 401);
+            return new RedirectResponse($this->url->to('forum')->base(), 302);
         }
 
+        // /var/www/html/storage/games
         $gamesDir = $this->paths->storage . DIRECTORY_SEPARATOR . 'games';
-        if (!is_dir($gamesDir)) {
+
+        if (!is_dir($gamesDir) || !is_readable($gamesDir)) {
             return new JsonResponse(['items' => []], 200);
         }
 
-        // 用 EngineChain 判定 engine / shape，可选
-        $engineChain = new EngineChain([
-            new InkEngine($gamesDir),
-            new TwineEngine($gamesDir),
-        ]);
-
         $items = [];
+        $id    = 1;
 
-        // 1) 扫目录形式的游戏：storage/games/{slug}/index.html
-        foreach (scandir($gamesDir) as $entry) {
-            if ($entry === '.' || $entry === '..') {
+        // 只看「子目录里的 meta.json」
+        // 形如 /storage/.../games/*/meta.json
+        $pattern = $gamesDir . DIRECTORY_SEPARATOR . '*' . DIRECTORY_SEPARATOR . 'meta.json';
+
+        foreach (glob($pattern) as $metaFile) {
+            if (!is_file($metaFile) || !is_readable($metaFile)) {
                 continue;
             }
 
-            $full = $gamesDir . DIRECTORY_SEPARATOR . $entry;
+            // 目录名就是 slug 的基础
+            $dir  = dirname($metaFile);
+            $slug = basename($dir);
 
-            // 目录形式
-            if (is_dir($full) && preg_match('~^[a-z0-9_-]+$~i', $entry)) {
-                $slug = $entry;
-
-                $resolved = $engineChain->locate($slug);
-                if (!$resolved->exists) {
-                    continue;
-                }
-
-                $metaFile = $full . DIRECTORY_SEPARATOR . 'meta.json';
-                $meta = $this->loadMeta($metaFile);
-
-                $items[] = $this->buildItem($slug, $meta, $resolved);
+            // 跳过特殊目录（即便有 meta 也不当成游戏）
+            if (in_array($slug, ['assets', 'ping'], true)) {
+                continue;
             }
+            if ($slug === '' || $slug[0] === '.') {
+                continue;
+            }
+
+            $raw = @file_get_contents($metaFile);
+            if ($raw === false) {
+                continue;
+            }
+
+            $meta = json_decode($raw, true);
+            if (!is_array($meta)) {
+                continue;
+            }
+
+            // ---- 安全读取字段 + 默认值 ----
+            $slugMeta = (string)($meta['slug'] ?? $slug);
+            if ($slugMeta === '' || !preg_match('~^[a-z0-9_-]+$~i', $slugMeta)) {
+                $slugMeta = $slug;
+            }
+
+            $title       = (string)($meta['title'] ?? strtoupper($slugMeta));
+            $subtitle    = (string)($meta['subtitle'] ?? 'DATA CARTRIDGE');
+            $author      = (string)($meta['author'] ?? 'UNKNOWN');
+            $size        = (string)($meta['size'] ?? 'N/A');
+            $length      = (int)($meta['length'] ?? 1);
+            $length      = max(1, min($length, 5)); // 1~5
+            $status      = (string)($meta['status'] ?? 'READY');
+            $description = (string)($meta['description'] ?? '');
+
+            $tags = $meta['tags'] ?? [];
+            if (!is_array($tags)) {
+                $tags = [];
+            }
+
+            $color      = (string)($meta['color'] ?? 'text-amber-500');
+            $stripColor = (string)($meta['stripColor'] ?? 'bg-amber-600');
+
+            $playUrl = (string)($meta['playUrl'] ?? '');
+            if ($playUrl === '') {
+                $playUrl = '/play/' . $slugMeta;
+            }
+
+            $items[] = [
+                'id'          => $id++,
+                'slug'        => $slugMeta,
+                'title'       => $title,
+                'subtitle'    => $subtitle,
+                'author'      => $author,
+                'size'        => $size,
+                'length'      => $length,
+                'status'      => $status,
+                'description' => $description,
+                'tags'        => $tags,
+                'color'       => $color,
+                'stripColor'  => $stripColor,
+                'playUrl'     => $playUrl,
+            ];
         }
 
-        // 2) legacy 单文件形式：storage/games/{slug}.html
-        foreach (scandir($gamesDir) as $entry) {
-            if (!preg_match('~^[a-z0-9_-]+\.html$~i', $entry)) {
-                continue;
-            }
-
-            $slug = substr($entry, 0, -5); // 去掉 ".html"
-            // 若已经被目录形式覆盖，就跳过，避免重复
-            if (Arr::first($items, fn ($i) => $i['slug'] === $slug)) {
-                continue;
-            }
-
-            $resolved = $engineChain->locate($slug);
-            if (!$resolved->exists) {
-                continue;
-            }
-
-            $metaFile = $gamesDir . DIRECTORY_SEPARATOR . $slug . '.json';
-            $meta = $this->loadMeta($metaFile);
-
-            $items[] = $this->buildItem($slug, $meta, $resolved);
-        }
-
-        // 按 title 排序（或者按 slug / 修改时间排序都可以）
-        usort($items, fn ($a, $b) => strcmp($a['title'], $b['title']));
+        // 可选：按 title 排序，保证顺序稳定
+        usort($items, fn (array $a, array $b) => strcmp($a['title'], $b['title']));
 
         return new JsonResponse(['items' => $items], 200);
     }
-
-    /**
-     * 从 meta.json 读取并简单校验。
-     */
-    private function loadMeta(string $metaFile): array
-    {
-        if (!is_file($metaFile) || !is_readable($metaFile)) {
-            return [];
-        }
-
-        $raw = @file_get_contents($metaFile);
-        if ($raw === false) {
-            return [];
-        }
-
-        $json = json_decode($raw, true);
-        return is_array($json) ? $json : [];
-    }
-
-    /**
-     * 统一构建前端要吃的结构。
-     */
-    private function buildItem(string $slug, array $meta, $resolved): array
-    {
-        // 允许 meta 覆盖标题等，没写则用 slug 兜底
-        $title       = (string) ($meta['title']       ?? $slug);
-        $subtitle    = (string) ($meta['subtitle']    ?? '');
-        $author      = (string) ($meta['author']      ?? 'Unknown');
-        $size        = (string) ($meta['size']        ?? '');
-        $status      = (string) ($meta['status']      ?? '');
-        $description = (string) ($meta['description'] ?? '');
-        $length      = (int)    ($meta['length']      ?? 3);
-        $tags        = isset($meta['tags']) && is_array($meta['tags']) ? array_values($meta['tags']) : [];
-        $color       = (string) ($meta['color']       ?? 'text-amber-500');
-        $stripColor  = (string) ($meta['stripColor']  ?? 'bg-amber-600');
-
-        $length = max(1, min(5, $length)); // 限制到 1–5
-
-        // 统一给一个 playUrl，前端直接用
-        $playUrl = $this->url
-            ->to('forum')
-            ->route('ladybyron-games.play', ['slug' => $slug]);
-
-        return [
-            'slug'       => $slug,
-            'title'      => $title,
-            'subtitle'   => $subtitle,
-            'author'     => $author,
-            'size'       => $size,
-            'length'     => $length,
-            'status'     => $status,
-            'description'=> $description,
-            'tags'       => $tags,
-            'color'      => $color,
-            'stripColor' => $stripColor,
-            'engine'     => $resolved->engine,
-            'shape'      => $resolved->shape,
-            'playUrl'    => $playUrl,
-        ];
-    }
 }
+
