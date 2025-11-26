@@ -22,7 +22,7 @@ final class GameListController implements RequestHandlerInterface
     {
         $actor = RequestUtil::getActor($request);
 
-        // 和其他 API 一致：未登录重定向论坛首页
+        // 和其他 API 一致：未登录直接回论坛首页
         if ($actor->isGuest()) {
             return new RedirectResponse($this->url->to('forum')->base(), 302);
         }
@@ -37,24 +37,30 @@ final class GameListController implements RequestHandlerInterface
         $items = [];
         $id    = 1;
 
-        // 只看「子目录里的 meta.json」
-        // 形如 /storage/.../games/*/meta.json
-        $pattern = $gamesDir . DIRECTORY_SEPARATOR . '*' . DIRECTORY_SEPARATOR . 'meta.json';
+        // 不当成游戏的目录
+        $skip = ['assets', 'ping', '.', '..'];
 
-        foreach (glob($pattern) as $metaFile) {
+        $dh = opendir($gamesDir);
+        if ($dh === false) {
+            return new JsonResponse(['items' => []], 200);
+        }
+
+        while (($entry = readdir($dh)) !== false) {
+            if (in_array($entry, $skip, true)) {
+                continue;
+            }
+            if ($entry[0] === '.') {
+                continue;
+            }
+
+            $dir = $gamesDir . DIRECTORY_SEPARATOR . $entry;
+            if (!is_dir($dir)) {
+                continue;
+            }
+
+            // ⭐ 关键：只处理存在 meta.json 的子目录
+            $metaFile = $dir . DIRECTORY_SEPARATOR . 'meta.json';
             if (!is_file($metaFile) || !is_readable($metaFile)) {
-                continue;
-            }
-
-            // 目录名就是 slug 的基础
-            $dir  = dirname($metaFile);
-            $slug = basename($dir);
-
-            // 跳过特殊目录（即便有 meta 也不当成游戏）
-            if (in_array($slug, ['assets', 'ping'], true)) {
-                continue;
-            }
-            if ($slug === '' || $slug[0] === '.') {
                 continue;
             }
 
@@ -69,6 +75,7 @@ final class GameListController implements RequestHandlerInterface
             }
 
             // ---- 安全读取字段 + 默认值 ----
+            $slug = basename($dir);
             $slugMeta = (string)($meta['slug'] ?? $slug);
             if ($slugMeta === '' || !preg_match('~^[a-z0-9_-]+$~i', $slugMeta)) {
                 $slugMeta = $slug;
@@ -79,7 +86,7 @@ final class GameListController implements RequestHandlerInterface
             $author      = (string)($meta['author'] ?? 'UNKNOWN');
             $size        = (string)($meta['size'] ?? 'N/A');
             $length      = (int)($meta['length'] ?? 1);
-            $length      = max(1, min($length, 5)); // 1~5
+            $length      = max(1, min($length, 5)); // 1~5 之间
             $status      = (string)($meta['status'] ?? 'READY');
             $description = (string)($meta['description'] ?? '');
 
@@ -113,10 +120,11 @@ final class GameListController implements RequestHandlerInterface
             ];
         }
 
-        // 可选：按 title 排序，保证顺序稳定
+        closedir($dh);
+
+        // 稳定排序（按标题）
         usort($items, fn (array $a, array $b) => strcmp($a['title'], $b['title']));
 
         return new JsonResponse(['items' => $items], 200);
     }
 }
-
