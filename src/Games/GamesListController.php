@@ -25,7 +25,7 @@ final class GamesListController implements RequestHandlerInterface
     {
         $actor = RequestUtil::getActor($request);
 
-        // 保持原逻辑：游戏库需要登录
+        // 游戏库需要登录
         if ($actor->isGuest()) {
             return new JsonResponse(['error' => 'unauthorized'], 401);
         }
@@ -42,7 +42,7 @@ final class GamesListController implements RequestHandlerInterface
         ]);
 
         $items    = [];
-        $autoId   = 1; // 自动分配的 id 计数器
+        $autoId   = 1;                 // 自动分配的 id 计数器
         $skipDirs = ['assets', 'ping']; // 永久跳过的目录名
 
         // 1) 目录形式的游戏：storage/games/{slug}/index.html
@@ -76,7 +76,7 @@ final class GamesListController implements RequestHandlerInterface
             $metaFile = $full . DIRECTORY_SEPARATOR . 'meta.json';
             $meta     = $this->loadMeta($metaFile);
 
-            // ⭐ 只接受有 meta.json 的游戏，避免 UNKNOWN 占位
+            // 只接受有 meta.json 的游戏，避免 UNKNOWN 占位
             if (empty($meta)) {
                 continue;
             }
@@ -118,7 +118,7 @@ final class GamesListController implements RequestHandlerInterface
             $items[] = $this->buildItem($slug, $meta, $resolved, $autoId);
         }
 
-        // 按 id 排序（你也可以改成按 id 或其它）
+        // ⭐ 按 id 升序排序；id 相同时再按 title 保证稳定顺序
         usort($items, function (array $a, array $b) {
             $idA = (int)($a['id'] ?? 0);
             $idB = (int)($b['id'] ?? 0);
@@ -126,8 +126,9 @@ final class GamesListController implements RequestHandlerInterface
             if ($idA !== $idB) {
                 return $idA <=> $idB;
             }
+
             return strcmp($a['title'], $b['title']);
-        }
+        });
 
         return new JsonResponse(['items' => $items], 200);
     }
@@ -156,7 +157,7 @@ final class GamesListController implements RequestHandlerInterface
      */
     private function buildItem(string $slug, array $meta, $resolved, int &$autoId): array
     {
-        // ⭐ 优先使用 meta.json 中的 id，没有或非法则用自动递增
+        // 优先使用 meta.json 中的 id，没有或非法则用自动递增
         $id = isset($meta['id']) ? (int) $meta['id'] : 0;
         if ($id <= 0) {
             $id = $autoId++;
@@ -182,7 +183,7 @@ final class GamesListController implements RequestHandlerInterface
             ->route('ladybyron-games.play', ['slug' => $slug]);
 
         return [
-            'id'         => $id,                 // ⭐ 新增 id
+            'id'         => $id,
             'slug'       => $slug,
             'title'      => $title,
             'subtitle'   => $subtitle,
