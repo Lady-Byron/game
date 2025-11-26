@@ -118,8 +118,16 @@ final class GamesListController implements RequestHandlerInterface
             $items[] = $this->buildItem($slug, $meta, $resolved, $autoId);
         }
 
-        // 按 title 排序（你也可以改成按 id 或其它）
-        usort($items, fn ($a, $b) => strcmp($a['title'], $b['title']));
+        // 按 id 排序（你也可以改成按 id 或其它）
+        usort($items, function (array $a, array $b) {
+            $idA = (int)($a['id'] ?? 0);
+            $idB = (int)($b['id'] ?? 0);
+
+            if ($idA !== $idB) {
+                return $idA <=> $idB;
+            }
+            return strcmp($a['title'], $b['title']);
+        }
 
         return new JsonResponse(['items' => $items], 200);
     }
