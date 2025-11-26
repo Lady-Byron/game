@@ -8,6 +8,7 @@ use LadyByron\Games\Controllers\AssetController;
 use LadyByron\Games\Saves\SavesListController;
 use LadyByron\Games\Saves\SaveUpsertController;
 use LadyByron\Games\Saves\SaveDeleteController;
+use LadyByron\Games\Games\GamesListController;
 
 return [
     // 原有：游戏入口与资源
@@ -25,4 +26,7 @@ return [
         ->post('/playapi/saves/{slug:[^/]+}', 'ladybyron-games.saves.upsert', SaveUpsertController::class)
         // 删除：DELETE /playapi/saves/{slug}/{slot}
         ->delete('/playapi/saves/{slug:[^/]+}/{slot:[^/]+}', 'ladybyron-games.saves.delete', SaveDeleteController::class),
+
+    (new Extend\Routes('forum'))
+        ->get('/playapi/games', 'ladybyron-games.games.index', GamesListController::class),
 ];
