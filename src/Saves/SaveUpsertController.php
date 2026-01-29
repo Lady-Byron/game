@@ -3,10 +3,8 @@ namespace LadyByron\Games\Saves;
 
 use LadyByron\Games\Model\GameSave;
 use Flarum\Http\RequestUtil;
-use Flarum\Http\UrlGenerator;
 use Illuminate\Support\Arr;
 use Laminas\Diactoros\Response\JsonResponse;
-use Laminas\Diactoros\Response\RedirectResponse;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -16,16 +14,10 @@ final class SaveUpsertController implements RequestHandlerInterface
     // 最大状态体积（防滥用/DoS）
     private const STATE_MAX_BYTES = 512 * 1024;
 
-    public function __construct(protected UrlGenerator $url) {}
-
     public function handle(Request $request): Response
     {
         $actor = RequestUtil::getActor($request);
-        if ($actor->isGuest()) {
-            return new RedirectResponse($this->url->to('forum')->base(), 302);
-        }
-
-        $rp   = (array) $request->getAttribute('routeParameters', []);
+        $rp    = (array) $request->getAttribute('routeParameters', []);
         $slug = (string) Arr::get($rp, 'slug', '');
         if ($slug === '' || !preg_match('~^[a-z0-9_-]+$~i', $slug)) {
             return new JsonResponse(['error' => 'invalid_slug'], 400);

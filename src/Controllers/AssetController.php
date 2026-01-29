@@ -2,8 +2,6 @@
 namespace LadyByron\Games\Controllers;
 
 use Flarum\Foundation\Paths;
-use Flarum\Http\RequestUtil;
-use Flarum\Http\UrlGenerator;
 use Illuminate\Support\Arr;
 use Laminas\Diactoros\Response;
 use Laminas\Diactoros\Response\HtmlResponse;
@@ -56,7 +54,6 @@ final class AssetController implements RequestHandlerInterface
     ];
 
     public function __construct(
-        private UrlGenerator $url,
         private Paths $paths
     ) {}
 
@@ -69,13 +66,6 @@ final class AssetController implements RequestHandlerInterface
         $slug = trim((string) rawurldecode((string)($route['slug'] ?? $qp['slug'] ?? '')), " \t\n\r\0\x0B/");
         $path = (string) ($route['path'] ?? $qp['path'] ?? '');
         $path = ltrim(str_replace('\\', '/', rawurldecode($path)), '/'); // 规范化
-
-        // 权限检查（保持你原逻辑）
-        $actor = RequestUtil::getActor($request);
-        if ($actor->isGuest()) {
-            $home = $this->url->to('forum')->base();
-            return new HtmlResponse('', 302, ['Location' => $home]);
-        }
 
         // 基本校验
         if ($slug === '' || !preg_match('~^[a-z0-9_-]+$~i', $slug) || str_contains($path, '..')) {

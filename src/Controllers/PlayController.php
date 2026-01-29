@@ -4,10 +4,8 @@ namespace LadyByron\Games\Controllers;
 
 use Flarum\Foundation\Paths;
 use Flarum\Http\RequestUtil;
-use Flarum\Http\UrlGenerator;
 use Illuminate\Support\Arr;
 use Laminas\Diactoros\Response\HtmlResponse;
-use Laminas\Diactoros\Response\RedirectResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -18,7 +16,6 @@ use LadyByron\Games\Engine\InkEngine;
 final class PlayController implements RequestHandlerInterface
 {
     public function __construct(
-        private UrlGenerator $url,
         private Paths $paths
     ) {}
 
@@ -34,10 +31,6 @@ final class PlayController implements RequestHandlerInterface
         }
 
         $actor = RequestUtil::getActor($request);
-        if ($actor->isGuest()) {
-            // 访客直接回论坛首页（避免 /login GET 405）
-            return new RedirectResponse($this->url->to('forum')->base(), 302);
-        }
 
         // 统一使用 Paths::storage，避免硬编码 base_path()
         $gamesDir = $this->paths->storage . DIRECTORY_SEPARATOR . 'games';
