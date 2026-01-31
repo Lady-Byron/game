@@ -3,6 +3,8 @@
 namespace LadyByron\Game\Games;
 
 use Flarum\Foundation\Paths;
+use Flarum\Settings\SettingsRepositoryInterface;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Laminas\Diactoros\Response\HtmlResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -11,7 +13,9 @@ use Psr\Http\Server\RequestHandlerInterface;
 final class GamesPageController implements RequestHandlerInterface
 {
     public function __construct(
-        private Paths $paths
+        private Paths $paths,
+        private SettingsRepositoryInterface $settings,
+        private FilesystemFactory $filesystemFactory
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -27,6 +31,22 @@ final class GamesPageController implements RequestHandlerInterface
             return new HtmlResponse('Failed to load', 500);
         }
 
+        $faviconTag = $this->buildFaviconTag();
+        if ($faviconTag) {
+            $html = preg_replace('~</head>~i', $faviconTag . '</head>', $html, 1);
+        }
+
         return new HtmlResponse($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+    }
+
+    private function buildFaviconTag(): ?string
+    {
+        $path = $this->settings->get('favicon_path');
+        if (!$path) {
+            return null;
+        }
+
+        $url = $this->filesystemFactory->disk('flarum-assets')->url($path);
+        return '<link rel="icon" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '">';
     }
 }
