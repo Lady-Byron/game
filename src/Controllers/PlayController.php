@@ -4,6 +4,8 @@ namespace LadyByron\Game\Controllers;
 
 use Flarum\Foundation\Paths;
 use Flarum\Http\RequestUtil;
+use Flarum\Settings\SettingsRepositoryInterface;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Support\Arr;
 use Laminas\Diactoros\Response\HtmlResponse;
 use Psr\Http\Message\ResponseInterface;
@@ -16,7 +18,9 @@ use LadyByron\Game\Engine\InkEngine;
 final class PlayController implements RequestHandlerInterface
 {
     public function __construct(
-        private Paths $paths
+        private Paths $paths,
+        private SettingsRepositoryInterface $settings,
+        private FilesystemFactory $filesystemFactory
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -59,6 +63,12 @@ final class PlayController implements RequestHandlerInterface
             return new HtmlResponse('Failed to load', 500);
         }
 
+        // 注入 favicon
+        $faviconTag = $this->buildFaviconTag();
+        if ($faviconTag) {
+            $html = preg_replace('~</head>~i', $faviconTag . '</head>', $html, 1);
+        }
+
         // 注入 ForumUser 与 ForumAuth（含 CSRF），供前端 fetch /playapi/* 使用
         if (empty(Arr::get($qp, 'noinject'))) {
             $username = (string) $actor->username;
@@ -90,9 +100,20 @@ final class PlayController implements RequestHandlerInterface
         return new HtmlResponse($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
     }
 
+    private function buildFaviconTag(): ?string
+    {
+        $path = $this->settings->get('favicon_path');
+        if (!$path) {
+            return null;
+        }
+
+        $url = $this->filesystemFactory->disk('flarum-assets')->url($path);
+        return '<link rel="icon" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '">';
+    }
+
     private function guessEngine(string $gamesDir, string $slug): string
     {
-        // 与 EngineChain 行为一致的“只读”推断
+        // 与 EngineChain 行为一致的"只读"推断
         $chain = new EngineChain([
             new InkEngine($gamesDir),
             new TwineEngine($gamesDir),
