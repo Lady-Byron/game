@@ -16,7 +16,7 @@
       "title": "Flop Game",
       "category": "feature",
       "icon": {
-        "name": "fas fa-gamepad"
+        "name": "fas fa-gamepad",
         "backgroundColor": "#5B8C5A",
         "color": "#fff"
       }
