@@ -10,6 +10,7 @@ use LadyByron\Game\Saves\SaveUpsertController;
 use LadyByron\Game\Saves\SaveDeleteController;
 use LadyByron\Game\Games\GamesListController;
 use LadyByron\Game\Games\GamesPageController;
+use LadyByron\Game\Games\GamesAssetController;
 
 return [
     // 原有：游戏入口与资源
@@ -30,5 +31,6 @@ return [
 
     (new Extend\Routes('forum'))
         ->get('/games', 'ladybyron-game.games.page', GamesPageController::class)
+        ->get('/games/{path:.+}', 'ladybyron-game.games.asset', GamesAssetController::class)
         ->get('/playapi/games', 'ladybyron-game.games.index', GamesListController::class),
 ];
