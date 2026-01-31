@@ -3,11 +3,7 @@
 use Illuminate\Database\Schema\Builder;
 use Illuminate\Database\Schema\Blueprint;
 
-return [
-    'up' => function (Builder $schema) {
-        if ($schema->hasTable('ladybyron_game_saves')) {
-            return;
-        }
+return Migration::createTableIfNotExists('ladybyron_game_saves', function (Blueprint $table) {
 
         $schema->create('ladybyron_game_saves', function (Blueprint $table) {
             $table->increments('id');
