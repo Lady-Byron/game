@@ -63,6 +63,15 @@ final class PlayController implements RequestHandlerInterface
             return new HtmlResponse('Failed to load', 500);
         }
 
+        // 注入 <base> 标签，使相对路径资源走 /assets/games/{slug}/ 直出（OLS / nginx 静态文件，不经 PHP）
+        $assetsUrl = rtrim($this->filesystemFactory->disk('flarum-assets')->url('games/' . $slug), '/') . '/';
+        $baseTag   = '<base href="' . htmlspecialchars($assetsUrl, ENT_QUOTES, 'UTF-8') . '">';
+        $baseCount = 0;
+        $html = preg_replace('~(<head[^>]*>)~i', '$1' . $baseTag, $html, 1, $baseCount);
+        if ($baseCount === 0) {
+            $html = $baseTag . $html;
+        }
+
         // 注入 favicon
         $faviconTag = $this->buildFaviconTag();
         if ($faviconTag) {
