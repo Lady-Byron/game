@@ -1,5 +1,5 @@
 {
-  "name": "lady-byron/games",
+  "name": "lady-byron/game",
   "description": "Embed local Twine/Ink games into Flarum at /play/{slug} with login gate.",
   "type": "flarum-extension",
   "license": "MIT",
@@ -8,7 +8,7 @@
   },
   "autoload": {
     "psr-4": {
-      "LadyByron\\Games\\": "src/"
+      "LadyByron\\Game\\": "src/"
     }
   },
   "extra": {

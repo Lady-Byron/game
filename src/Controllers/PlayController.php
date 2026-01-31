@@ -1,6 +1,6 @@
 <?php
 
-namespace LadyByron\Games\Controllers;
+namespace LadyByron\Game\Controllers;
 
 use Flarum\Foundation\Paths;
 use Flarum\Http\RequestUtil;
@@ -9,9 +9,9 @@ use Laminas\Diactoros\Response\HtmlResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use LadyByron\Games\Engine\EngineChain;
-use LadyByron\Games\Engine\TwineEngine;
-use LadyByron\Games\Engine\InkEngine;
+use LadyByron\Game\Engine\EngineChain;
+use LadyByron\Game\Engine\TwineEngine;
+use LadyByron\Game\Engine\InkEngine;
 
 final class PlayController implements RequestHandlerInterface
 {

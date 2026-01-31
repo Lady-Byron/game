@@ -1,7 +1,7 @@
 <?php
-namespace LadyByron\Games\Saves;
+namespace LadyByron\Game\Saves;
 
-use LadyByron\Games\Model\GameSave;
+use LadyByron\Game\Model\GameSave;
 use Flarum\Http\RequestUtil;
 use Illuminate\Support\Arr;
 use Laminas\Diactoros\Response\JsonResponse;

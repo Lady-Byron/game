@@ -1,5 +1,5 @@
 <?php
-namespace LadyByron\Games\Engine;
+namespace LadyByron\Game\Engine;
 
 final class TwineEngine implements GameEngineInterface
 {

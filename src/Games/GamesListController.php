@@ -1,6 +1,6 @@
 <?php
 
-namespace LadyByron\Games\Games;
+namespace LadyByron\Game\Games;
 
 use Flarum\Foundation\Paths;
 use Flarum\Http\UrlGenerator;
@@ -9,13 +9,13 @@ use Laminas\Diactoros\Response\JsonResponse;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Server\RequestHandlerInterface;
-use LadyByron\Games\Engine\EngineChain;
-use LadyByron\Games\Engine\TwineEngine;
-use LadyByron\Games\Engine\InkEngine;
+use LadyByron\Game\Engine\EngineChain;
+use LadyByron\Game\Engine\TwineEngine;
+use LadyByron\Game\Engine\InkEngine;
 
 final class GamesListController implements RequestHandlerInterface
 {
-    private const CACHE_KEY = 'ladybyron_games_list';
+    private const CACHE_KEY = 'ladybyron_game_list';
     private const CACHE_TTL = 300; // 5 分钟缓存
 
     public function __construct(
@@ -165,7 +165,7 @@ final class GamesListController implements RequestHandlerInterface
 
         $playUrl = $this->url
             ->to('forum')
-            ->route('ladybyron-games.play', ['slug' => $slug]);
+            ->route('ladybyron-game.play', ['slug' => $slug]);
 
         return [
             'id'          => $id,
