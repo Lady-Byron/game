@@ -1,5 +1,5 @@
 <?php
-namespace LadyByron\Games\Model;
+namespace LadyByron\Game\Model;
 
 use Flarum\Database\AbstractModel;
 

@@ -1,5 +1,5 @@
 <?php
-namespace LadyByron\Games\Engine;
+namespace LadyByron\Game\Engine;
 
 interface GameEngineInterface
 {

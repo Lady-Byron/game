@@ -1,5 +1,5 @@
 <?php
-namespace LadyByron\Games\Controllers;
+namespace LadyByron\Game\Controllers;
 
 use Flarum\Foundation\Paths;
 use Illuminate\Support\Arr;
