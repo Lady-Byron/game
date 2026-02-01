@@ -31,8 +31,17 @@ final class GamesPageController implements RequestHandlerInterface
             return new HtmlResponse('Failed to load', 500);
         }
 
-        // 注入 <base> 标签，使相对路径资源走 /assets/games/ 直出
+        // 将 Vite 构建的绝对路径 /games/… 和相对路径统一指向 /assets/games/… 直出
         $assetsUrl = rtrim($this->filesystemFactory->disk('flarum-assets')->url('games'), '/') . '/';
+
+        // 1) 绝对路径重写：src="/games/…" 、href="/games/…" → src="/assets/games/…"
+        $html = preg_replace(
+            '~((?:src|href)\s*=\s*["\'])/games/~i',
+            '$1' . $assetsUrl,
+            $html
+        );
+
+        // 2) <base> 兜底相对路径
         $baseTag   = '<base href="' . htmlspecialchars($assetsUrl, ENT_QUOTES, 'UTF-8') . '">';
         $baseCount = 0;
         $html = preg_replace('~(<head[^>]*>)~i', '$1' . $baseTag, $html, 1, $baseCount);
